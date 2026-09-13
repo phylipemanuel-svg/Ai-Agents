@@ -1,9 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { isAuthConfigured } from "@/lib/session";
+import { isSignedIn } from "@/lib/require-auth";
 import LogoutButton from "./LogoutButton";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  if (!(await isSignedIn())) redirect("/login");
+
   return (
     <div className="min-h-screen">
       <header className="relative overflow-hidden bg-violet-darkest">

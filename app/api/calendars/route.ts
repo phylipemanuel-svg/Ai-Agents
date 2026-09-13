@@ -3,13 +3,20 @@ import { store } from "@/lib/store";
 import { newId, newApiKey } from "@/lib/id";
 import { TYPE_DEFAULTS } from "@/lib/defaults";
 import { Calendar, CalendarType } from "@/lib/types";
+import { requireApiAuth } from "@/lib/require-auth";
 
 export async function GET() {
+  const denied = await requireApiAuth();
+  if (denied) return denied;
+
   const calendars = await store.listCalendars();
   return NextResponse.json({ calendars });
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requireApiAuth();
+  if (denied) return denied;
+
   const body = await req.json().catch(() => null);
   if (!body || typeof body.name !== "string" || !body.name.trim()) {
     return NextResponse.json({ error: "`name` is required" }, { status: 400 });

@@ -3,10 +3,14 @@ import { store } from "@/lib/store";
 import { newId, newApiKey } from "@/lib/id";
 import { CALENDAR_TYPE_LABELS, TYPE_DEFAULTS } from "@/lib/defaults";
 import { Calendar, CalendarType } from "@/lib/types";
+import { requireApiAuth } from "@/lib/require-auth";
 
 const SEED_TYPES: CalendarType[] = ["dentist", "lawyer", "golf", "estate-agent"];
 
 export async function POST() {
+  const denied = await requireApiAuth();
+  if (denied) return denied;
+
   const existing = await store.listCalendars();
   const existingTypes = new Set(existing.map((c) => c.type));
 
