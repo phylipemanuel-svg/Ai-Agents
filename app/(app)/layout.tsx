@@ -52,6 +52,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
+      {!isAuthConfigured() && (
+        <div className="border-b border-orange-light bg-orange-lightest px-4 py-2 text-center text-xs text-orange-darker">
+          This dashboard is <strong>not password protected</strong> — anyone with the URL can
+          view and change calendars and their API keys. Set <code>ADMIN_PASSWORD</code> (and{" "}
+          <code>ADMIN_USER</code>) in your hosting environment variables, then redeploy.
+        </div>
+      )}
+
       <div className="mx-auto max-w-5xl px-4 py-8">{children}</div>
     </div>
   );
