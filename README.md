@@ -62,9 +62,11 @@ memory for the life of the dev server.
    `UPSTASH_REDIS_REST_TOKEN`) automatically — no code changes needed, the
    app detects them and switches storage backends on its own.
 3. **Protect the dashboard (recommended before a public demo):** set the
-   environment variables `ADMIN_PASSWORD` (and optionally `ADMIN_USER`,
-   default `admin`) in Vercel's project settings. The whole site except
-   `/api/v1/*` (the agent API) will then require HTTP Basic Auth. Leave
+   environment variables `ADMIN_USER` and `ADMIN_PASSWORD` in Vercel's
+   project settings (this repo's local `.env.local` — not committed — is
+   already set to `admin` / `Welcome123` for local testing; set your own
+   values in Vercel). The whole site except `/api/v1/*` (the agent API)
+   will then require signing in at a branded `/login` page. Leave
    `ADMIN_PASSWORD` unset for an open dashboard (fine for a quick private
    demo link).
 4. Redeploy. Visit your dashboard, click "Load demo calendars", open a
@@ -77,6 +79,14 @@ Click **+ Add calendar** on the dashboard at any time — give it a name and
 a type (dentist / lawyer / golf / estate agent / custom), and it
 immediately gets its own API key and endpoints. There's no fixed limit and
 no redeploy required.
+
+## Brand
+
+Styled to Flotek Group's brand guidelines: Space Grotesk typeface, the
+plum/orange/meadow-green/violet palette, and the real logo lockup (cropped
+from the official brand guidelines PDF, unaltered) in the header and on the
+login page. Logo assets live in `public/brand/` and `app/icon.png`
+(favicon).
 
 ## Notes on the "fake" part
 

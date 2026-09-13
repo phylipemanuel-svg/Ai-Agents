@@ -1,33 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthConfigured, SESSION_COOKIE_NAME, verifySessionToken } from "@/lib/session";
 
-// Agent-facing API (/api/v1/*) authenticates per-calendar via API key instead
-// of admin credentials, so it's left alone here.
-export function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith("/api/v1")) {
+const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Agent-facing API authenticates per-calendar via API key, not the admin login.
+  if (pathname.startsWith("/api/v1")) {
     return NextResponse.next();
   }
 
-  const password = process.env.ADMIN_PASSWORD;
-  if (!password) return NextResponse.next();
-  const user = process.env.ADMIN_USER || "admin";
-
-  const authHeader = req.headers.get("authorization");
-  if (authHeader?.startsWith("Basic ")) {
-    const decoded = atob(authHeader.slice(6));
-    const separatorIndex = decoded.indexOf(":");
-    const suppliedUser = decoded.slice(0, separatorIndex);
-    const suppliedPass = decoded.slice(separatorIndex + 1);
-    if (suppliedUser === user && suppliedPass === password) {
-      return NextResponse.next();
-    }
+  if (!isAuthConfigured() || PUBLIC_PATHS.includes(pathname)) {
+    return NextResponse.next();
   }
 
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Booking Sandbox Admin"' },
-  });
+  const token = req.cookies.get(SESSION_COOKIE_NAME)?.value;
+  if (await verifySessionToken(token)) {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith("/api")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const loginUrl = new URL("/login", req.url);
+  loginUrl.searchParams.set("from", pathname);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png|brand/).*)"],
 };

@@ -73,49 +73,49 @@ export default function CalendarDetailClient({
 
   return (
     <div>
-      <Link href="/" className="text-sm text-slate-500 hover:underline">
+      <Link href="/" className="text-sm text-violet-darker hover:underline">
         ← All calendars
       </Link>
 
       <header className="mt-2 mb-6 flex items-center gap-3">
         <span className="text-3xl">{CALENDAR_TYPE_EMOJI[calendar.type]}</span>
         <div>
-          <h1 className="text-2xl font-semibold">{calendar.name}</h1>
-          <p className="text-sm text-slate-500">{CALENDAR_TYPE_LABELS[calendar.type]}</p>
+          <h1 className="text-2xl font-bold text-plum-darkest">{calendar.name}</h1>
+          <p className="text-sm text-violet-darker">{CALENDAR_TYPE_LABELS[calendar.type]}</p>
         </div>
       </header>
 
-      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="font-medium">API credentials</h2>
-        <p className="mt-1 text-sm text-slate-500">
+      <section className="mb-6 rounded-lg border border-plum-lighter/40 bg-white p-5">
+        <h2 className="font-bold text-plum-darkest">API credentials</h2>
+        <p className="mt-1 text-sm text-violet-darker">
           Give these to the agent that should manage this calendar. Every request must include the
           API key — as an <code>x-api-key</code> header or <code>Authorization: Bearer</code>.
         </p>
         <dl className="mt-3 space-y-2 text-sm">
           <div className="flex gap-2">
-            <dt className="w-28 shrink-0 font-medium text-slate-600">Calendar ID</dt>
+            <dt className="w-28 shrink-0 font-medium text-plum-dark">Calendar ID</dt>
             <dd className="break-all font-mono text-xs">{calendar.id}</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="w-28 shrink-0 font-medium text-slate-600">Base URL</dt>
+            <dt className="w-28 shrink-0 font-medium text-plum-dark">Base URL</dt>
             <dd className="break-all font-mono text-xs">{baseUrl}/api/v1/{calendar.id}</dd>
           </div>
           <div className="flex items-center gap-2">
-            <dt className="w-28 shrink-0 font-medium text-slate-600">API key</dt>
+            <dt className="w-28 shrink-0 font-medium text-plum-dark">API key</dt>
             <dd className="break-all font-mono text-xs">
               {showKey ? calendar.apiKey : "•".repeat(20)}
             </dd>
-            <button onClick={() => setShowKey((s) => !s)} className="text-xs text-slate-500 underline">
+            <button onClick={() => setShowKey((s) => !s)} className="text-xs text-violet-darker underline">
               {showKey ? "Hide" : "Show"}
             </button>
-            <button onClick={rotateKey} className="text-xs text-red-500 underline">
+            <button onClick={rotateKey} className="text-xs text-orange-darker underline">
               Rotate
             </button>
           </div>
         </dl>
 
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-medium text-slate-700">
+          <summary className="cursor-pointer text-sm font-medium text-plum-dark">
             Example requests
           </summary>
           <div className="mt-2 space-y-3">
@@ -126,10 +126,10 @@ export default function CalendarDetailClient({
         </details>
       </section>
 
-      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-5">
+      <section className="mb-6 rounded-lg border border-plum-lighter/40 bg-white p-5">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium">Business hours</h2>
-          <button onClick={() => setEditingHours((v) => !v)} className="text-xs text-slate-500 underline">
+          <h2 className="font-bold text-plum-darkest">Business hours</h2>
+          <button onClick={() => setEditingHours((v) => !v)} className="text-xs text-violet-darker underline">
             {editingHours ? "Cancel" : "Edit"}
           </button>
         </div>
@@ -143,7 +143,7 @@ export default function CalendarDetailClient({
             }}
           />
         ) : (
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-violet-darker">
             {calendar.openDays
               .slice()
               .sort()
@@ -155,29 +155,29 @@ export default function CalendarDetailClient({
         )}
       </section>
 
-      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 font-medium">Create a test booking</h2>
+      <section className="mb-6 rounded-lg border border-plum-lighter/40 bg-white p-5">
+        <h2 className="mb-3 font-bold text-plum-darkest">Create a test booking</h2>
         <TestBookingForm calendarId={calendar.id} apiKey={calendar.apiKey} onBooked={refreshBookings} />
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-5">
-        <h2 className="mb-3 font-medium">Bookings ({upcoming.length} upcoming)</h2>
+      <section className="rounded-lg border border-plum-lighter/40 bg-white p-5">
+        <h2 className="mb-3 font-bold text-plum-darkest">Bookings ({upcoming.length} upcoming)</h2>
         {bookings.length === 0 ? (
-          <p className="text-sm text-slate-500">No bookings yet.</p>
+          <p className="text-sm text-violet-darker">No bookings yet.</p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-plum-lightest">
             {[...upcoming, ...past].map((b) => (
               <li key={b.id} className="flex items-center justify-between py-2 text-sm">
                 <div>
-                  <span className={b.status === "cancelled" ? "text-slate-400 line-through" : ""}>
+                  <span className={b.status === "cancelled" ? "text-violet line-through" : ""}>
                     {new Date(b.start).toLocaleString()} — {b.customerName}
                   </span>
                   {b.customerContact && (
-                    <span className="ml-2 text-xs text-slate-400">{b.customerContact}</span>
+                    <span className="ml-2 text-xs text-violet">{b.customerContact}</span>
                   )}
                 </div>
                 {b.status === "confirmed" && new Date(b.end) > new Date() && (
-                  <button onClick={() => cancelBooking(b.id)} className="text-xs text-red-500 underline">
+                  <button onClick={() => cancelBooking(b.id)} className="text-xs text-orange-darker underline">
                     Cancel
                   </button>
                 )}
@@ -195,19 +195,19 @@ function CodeBlock({ label, code }: { label: string; code: string }) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-xs font-medium text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-violet-darker">{label}</span>
         <button
           onClick={async () => {
             await navigator.clipboard.writeText(code);
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           }}
-          className="text-xs text-slate-400 hover:text-slate-700"
+          className="text-xs text-violet hover:text-plum-darkest"
         >
           {copied ? "Copied!" : "Copy"}
         </button>
       </div>
-      <pre className="overflow-x-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
+      <pre className="overflow-x-auto rounded-md bg-violet-darkest p-3 text-xs text-white/90">
         <code>{code}</code>
       </pre>
     </div>
@@ -258,8 +258,8 @@ function BusinessHoursForm({
             onClick={() => toggleDay(d)}
             className={`rounded-md border px-2 py-1 text-xs ${
               openDays.includes(d)
-                ? "border-slate-900 bg-slate-900 text-white"
-                : "border-slate-300 text-slate-500"
+                ? "border-plum-dark bg-plum-dark text-white"
+                : "border-plum-lighter/60 text-violet-darker"
             }`}
           >
             {label}
@@ -273,7 +273,7 @@ function BusinessHoursForm({
             type="time"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1"
+            className="rounded-md border border-plum-lighter/60 px-2 py-1"
           />
         </label>
         <label className="flex items-center gap-1">
@@ -282,7 +282,7 @@ function BusinessHoursForm({
             type="time"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1"
+            className="rounded-md border border-plum-lighter/60 px-2 py-1"
           />
         </label>
         <label className="flex items-center gap-1">
@@ -293,7 +293,7 @@ function BusinessHoursForm({
             step={5}
             value={slotMinutes}
             onChange={(e) => setSlotMinutes(Number(e.target.value))}
-            className="w-20 rounded-md border border-slate-300 px-2 py-1"
+            className="w-20 rounded-md border border-plum-lighter/60 px-2 py-1"
           />
         </label>
         <label className="flex items-center gap-1">
@@ -301,14 +301,14 @@ function BusinessHoursForm({
           <input
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-40 rounded-md border border-slate-300 px-2 py-1"
+            className="w-40 rounded-md border border-plum-lighter/60 px-2 py-1"
           />
         </label>
       </div>
       <button
         onClick={save}
         disabled={saving}
-        className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        className="rounded-md bg-orange px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-dark disabled:opacity-50"
       >
         {saving ? "Saving…" : "Save business hours"}
       </button>
@@ -384,13 +384,13 @@ function TestBookingForm({
             setDate(e.target.value);
             loadAvailability(e.target.value);
           }}
-          className="rounded-md border border-slate-300 px-2 py-1"
+          className="rounded-md border border-plum-lighter/60 px-2 py-1"
         />
-        {loading && <span className="text-xs text-slate-400">Loading…</span>}
+        {loading && <span className="text-xs text-violet">Loading…</span>}
       </div>
 
       {availability && availability.slots.length === 0 && !loading && (
-        <p className="text-xs text-slate-400">Closed, or no slots left, on this date.</p>
+        <p className="text-xs text-violet">Closed, or no slots left, on this date.</p>
       )}
 
       {availability && availability.slots.length > 0 && (
@@ -402,10 +402,10 @@ function TestBookingForm({
               onClick={() => setSelectedSlot(slot.start)}
               className={`rounded-md border px-2 py-1 text-xs ${
                 !slot.available
-                  ? "cursor-not-allowed border-slate-100 text-slate-300 line-through"
+                  ? "cursor-not-allowed border-plum-lightest text-plum-lighter line-through"
                   : selectedSlot === slot.start
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-300 hover:border-slate-500"
+                  ? "border-plum-dark bg-plum-dark text-white"
+                  : "border-plum-lighter/60 hover:border-plum"
               }`}
             >
               {new Date(slot.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -419,17 +419,17 @@ function TestBookingForm({
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
           placeholder="Customer name"
-          className="flex-1 rounded-md border border-slate-300 px-2 py-1"
+          className="flex-1 rounded-md border border-plum-lighter/60 px-2 py-1"
         />
         <button
           onClick={book}
           disabled={!selectedSlot}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          className="rounded-md bg-orange px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-dark disabled:opacity-50"
         >
           Book slot
         </button>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-orange-darker">{error}</p>}
     </div>
   );
 }
