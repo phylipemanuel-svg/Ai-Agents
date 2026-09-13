@@ -18,6 +18,86 @@ const calendarKey = (id: string) => `calendar:${id}`;
 const bookingIdsKey = (calendarId: string) => `calendar:${calendarId}:bookings`;
 const bookingKey = (id: string) => `booking:${id}`;
 
+function envValue(name: string): string | undefined {
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : undefined;
+}
+
+function restCredentials() {
+  const url = envValue("KV_REST_API_URL") ?? envValue("UPSTASH_REDIS_REST_URL");
+  const token = envValue("KV_REST_API_TOKEN") ?? envValue("UPSTASH_REDIS_REST_TOKEN");
+  return url && token ? { url, token } : null;
+}
+
+function connectionUrl(): string | undefined {
+  return envValue("REDIS_URL") ?? envValue("KV_URL");
+}
+
+export type StoreBackend = "upstash-rest" | "redis-url" | "memory";
+
+export function detectBackend(): StoreBackend {
+  if (restCredentials()) return "upstash-rest";
+  if (connectionUrl()) return "redis-url";
+  return "memory";
+}
+
+/** Minimal key/value surface the Redis store needs, so either client can back it. */
+interface KvClient {
+  getJson<T>(key: string): Promise<T | null>;
+  setJson(key: string, value: unknown): Promise<void>;
+  del(key: string): Promise<void>;
+  smembers(key: string): Promise<string[]>;
+  sadd(key: string, member: string): Promise<void>;
+  srem(key: string, member: string): Promise<void>;
+}
+
+async function createRestClient(): Promise<KvClient> {
+  const credentials = restCredentials()!;
+  const { Redis } = await import("@upstash/redis");
+  const redis = new Redis(credentials);
+  return {
+    // The REST client deserializes stored JSON for us.
+    getJson: async <T,>(key: string) => (await redis.get<T>(key)) ?? null,
+    setJson: async (key, value) => {
+      await redis.set(key, value);
+    },
+    del: async (key) => {
+      await redis.del(key);
+    },
+    smembers: async (key) => (await redis.smembers(key)) as string[],
+    sadd: async (key, member) => {
+      await redis.sadd(key, member);
+    },
+    srem: async (key, member) => {
+      await redis.srem(key, member);
+    },
+  };
+}
+
+async function createConnectionClient(): Promise<KvClient> {
+  const { default: Redis } = await import("ioredis");
+  const redis = new Redis(connectionUrl()!, { maxRetriesPerRequest: 3 });
+  return {
+    getJson: async <T,>(key: string) => {
+      const raw = await redis.get(key);
+      return raw ? (JSON.parse(raw) as T) : null;
+    },
+    setJson: async (key, value) => {
+      await redis.set(key, JSON.stringify(value));
+    },
+    del: async (key) => {
+      await redis.del(key);
+    },
+    smembers: (key) => redis.smembers(key),
+    sadd: async (key, member) => {
+      await redis.sadd(key, member);
+    },
+    srem: async (key, member) => {
+      await redis.srem(key, member);
+    },
+  };
+}
+
 class MemoryStore implements Store {
   private calendars = new Map<string, Calendar>();
   private bookings = new Map<string, Booking>();
@@ -86,54 +166,49 @@ class MemoryStore implements Store {
   }
 }
 
-function kvEnv() {
-  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
-  return { url, token };
-}
+class RedisStore implements Store {
+  private clientPromise: Promise<KvClient> | null = null;
 
-class KvStore implements Store {
-  private async kv() {
-    const { Redis } = await import("@upstash/redis");
-    const { url, token } = kvEnv();
-    return new Redis({ url: url!, token: token! });
+  constructor(private readonly connect: () => Promise<KvClient>) {}
+
+  private client() {
+    if (!this.clientPromise) this.clientPromise = this.connect();
+    return this.clientPromise;
   }
 
   async listCalendars() {
-    const kv = await this.kv();
-    const ids = (await kv.smembers(CALENDAR_IDS_KEY)) as string[];
+    const kv = await this.client();
+    const ids = await kv.smembers(CALENDAR_IDS_KEY);
     if (!ids.length) return [];
-    const calendars = await Promise.all(
-      ids.map((id) => kv.get<Calendar>(calendarKey(id)))
-    );
+    const calendars = await Promise.all(ids.map((id) => kv.getJson<Calendar>(calendarKey(id))));
     return calendars
       .filter((c): c is Calendar => Boolean(c))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 
   async getCalendar(id: string) {
-    const kv = await this.kv();
-    return (await kv.get<Calendar>(calendarKey(id))) ?? null;
+    const kv = await this.client();
+    return kv.getJson<Calendar>(calendarKey(id));
   }
 
   async createCalendar(calendar: Calendar) {
-    const kv = await this.kv();
-    await kv.set(calendarKey(calendar.id), calendar);
+    const kv = await this.client();
+    await kv.setJson(calendarKey(calendar.id), calendar);
     await kv.sadd(CALENDAR_IDS_KEY, calendar.id);
   }
 
   async updateCalendar(id: string, patch: Partial<Calendar>) {
-    const kv = await this.kv();
+    const kv = await this.client();
     const existing = await this.getCalendar(id);
     if (!existing) return null;
     const updated = { ...existing, ...patch, id: existing.id };
-    await kv.set(calendarKey(id), updated);
+    await kv.setJson(calendarKey(id), updated);
     return updated;
   }
 
   async deleteCalendar(id: string) {
-    const kv = await this.kv();
-    const bookingIds = (await kv.smembers(bookingIdsKey(id))) as string[];
+    const kv = await this.client();
+    const bookingIds = await kv.smembers(bookingIdsKey(id));
     if (bookingIds.length) {
       await Promise.all(bookingIds.map((bid) => kv.del(bookingKey(bid))));
       await kv.del(bookingIdsKey(id));
@@ -143,47 +218,47 @@ class KvStore implements Store {
   }
 
   async listBookings(calendarId: string) {
-    const kv = await this.kv();
-    const ids = (await kv.smembers(bookingIdsKey(calendarId))) as string[];
+    const kv = await this.client();
+    const ids = await kv.smembers(bookingIdsKey(calendarId));
     if (!ids.length) return [];
-    const bookings = await Promise.all(
-      ids.map((id) => kv.get<Booking>(bookingKey(id)))
-    );
+    const bookings = await Promise.all(ids.map((id) => kv.getJson<Booking>(bookingKey(id))));
     return bookings
       .filter((b): b is Booking => Boolean(b))
       .sort((a, b) => a.start.localeCompare(b.start));
   }
 
   async getBooking(calendarId: string, bookingId: string) {
-    const kv = await this.kv();
-    const booking = await kv.get<Booking>(bookingKey(bookingId));
+    const kv = await this.client();
+    const booking = await kv.getJson<Booking>(bookingKey(bookingId));
     if (!booking || booking.calendarId !== calendarId) return null;
     return booking;
   }
 
   async createBooking(booking: Booking) {
-    const kv = await this.kv();
-    await kv.set(bookingKey(booking.id), booking);
+    const kv = await this.client();
+    await kv.setJson(bookingKey(booking.id), booking);
     await kv.sadd(bookingIdsKey(booking.calendarId), booking.id);
   }
 
   async cancelBooking(calendarId: string, bookingId: string) {
-    const kv = await this.kv();
+    const kv = await this.client();
     const booking = await this.getBooking(calendarId, bookingId);
     if (!booking) return false;
     booking.status = "cancelled";
-    await kv.set(bookingKey(bookingId), booking);
+    await kv.setJson(bookingKey(bookingId), booking);
     return true;
   }
 }
 
-function hasKvEnv() {
-  const { url, token } = kvEnv();
-  return Boolean(url && token);
-}
-
 function createStore(): Store {
-  return hasKvEnv() ? new KvStore() : new MemoryStore();
+  switch (detectBackend()) {
+    case "upstash-rest":
+      return new RedisStore(createRestClient);
+    case "redis-url":
+      return new RedisStore(createConnectionClient);
+    default:
+      return new MemoryStore();
+  }
 }
 
 // Survive Next.js dev-server hot reloads by stashing the singleton on globalThis.
@@ -195,4 +270,4 @@ if (process.env.NODE_ENV !== "production") {
   globalForStore.__bookingStore = store;
 }
 
-export const usingPersistentStore = hasKvEnv();
+export const usingPersistentStore = detectBackend() !== "memory";
